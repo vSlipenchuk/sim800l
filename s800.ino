@@ -2,7 +2,7 @@
 #include "sim800l.h"
 #include "SoftwareSerial.h"
 
-char *api_key="ZZ3OYZQHO07104VN";
+char *api_key="VZ3OYZQHO07104VN";
 #define  NEXT_RUN 20 /* make run for report new state every XXX seconds */
 
 void prn(char *fmt, ... );
@@ -14,37 +14,20 @@ void setup() {
   mySerial.begin(19200);  // open gprs port
   Serial.begin(19200); // console
 
-  gprs.c = &Serial; gprs.con_mode=con_inchar| con_outchar ;//| con_line; // attach console
-
-  prn("Hello, world!\n");
+  //gprs.c = &Serial; gprs.con_mode=con_inchar| con_outchar ;//| con_line; // attach console
 
   gprs.at("I");
   gprs.ip_attach("internet.mts.ru");
-  //gprs.csq(); 
 
-    delay(3000); // wait for modem to init
+  delay(3000); // wait for modem to init
 
-  //my_update();
- //gprs.wget("http://api.thingspeak.com/update.json?api_key=Y31691C0KOZAI3Z1&field1=10&field2=20&field3=30");
- //gprs.wget("http://api.thingspeak.com/update.json?api_key=Y31691C0KOZAI3Z1");
- //gprs.wget("ya.ru");
-  Serial.println("Done wget");
 
 }
 
 char a[200];
 
-bool thingspeak_update(char *api_key, double f1, double  f2,double f3) {
-  char a[200];
-  String arg;
-arg="http://api.thingspeak.com/update.json?api_key="+String(api_key)+"&field1="+String(f1)+"&field2="+String(f2)+"&field3="+String(f3);
-  Serial.println("TryUpdate:"+arg);
- arg.toCharArray(a,sizeof(a));
-  return gprs.wget(a);
-}
 
 void strcatd(char *str,double v) { dtostrf( v, 2,2, str+strlen(str)); }
-
 
 int my_update() {
    strcpy(a,"http://api.thingspeak.com/update.json?api_key=");
@@ -54,8 +37,7 @@ int my_update() {
    strcat(a,"&field3=");  strcatd(a, gprs.rssi() );
    
   Serial.print("URL="); Serial.println(a);
-   gprs.wget(a); // run it
-   //thingspeak_update(, readVcc()/100., Therm (analogRead(A7)) , gprs.rssi() );
+   return gprs.wget(a); // run it
 }
 
 int run = 0; // when ti run update
