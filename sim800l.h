@@ -15,6 +15,9 @@ class sim800l {
   byte ll; byte line[254];  // collected line before flash
   byte reset_pin, lr,  ok, err; // rpin  line_ready and ok/err counters
 
+  char clip[14]; // incoming call if detected
+  char dtmf[14]; // dtmf command collecting
+
   byte _csq; // GSM coverage
   char _ip[16]; // ip addr if GPRS connected
 
@@ -35,6 +38,12 @@ class sim800l {
   byte  at(char *cmd,int ta=MODEM_DEF_TIMEOUT); // at command returns 1 on OK, 0 on error
   byte  atf(char *fmt,...);
   
+  //CALL
+  void ath() { at("h0"); clip[0]=0; dtmf[0]=0; } // drop a call
+  byte ata() {  dtmf[0]=0; clip[0]=0; return at("A")&&at("+ddet=1"); } // answer and enable dtmf detection
+  byte play_dtmf(char *_dtmf) { while(*_dtmf) { if (!atf("+VTS=%c",*_dtmf)) return 0;  _dtmf++; } return 1; }
+  byte playOK() { return play_dtmf("11");}
+  byte playERR() { return play_dtmf("81");}
   // GSM
   byte csq(); // update GSM csq coverage...
   int  rssi(); /// CSQ in dBm
@@ -43,6 +52,7 @@ class sim800l {
   // http
   byte http_connect(char *url,int ta=HTTP_DEF_TIMEOUT);
   int  http_read(char *buf,int len);
-  byte wget(char *url); // get URL , responce?
+  byte http_done();  // close http session
+  byte wget(char *url,char *out=0,int size=0); // get URL , responce?
 };
 

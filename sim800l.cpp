@@ -15,6 +15,17 @@ void sim800l::_std_answer() {
 char *p; int i;
 
 if ((con_mode & con_line) && c) {  c->print("LINE:");   c->println((char*)line);  } // line debug
+if (strncmp(line,"+CLIP: \"",8)==0) {
+   p=line+8;
+   for(i=0;(i<sizeof(clip)-1) && (p[i]!='"')&&(p[i]!=',');i++) clip[i]=p[i];
+   clip[i]=0;
+   //Serial.println("
+ }
+if (strncmp(line,"+DTMF: ",7)==0) {
+  p=line+7; while (*p && *p==' ') p++;
+  if (*p) { i=strlen(dtmf); if (i+1<sizeof(dtmf)) {dtmf[i]=*p; dtmf[i+1]=0;}  } // Add a DTMF
+  //Serial.print("COLLEDTED_DTMF:"); Serial.println(dtmf);
+  }
 if ((strncmp(line,"+HTTPREAD",9)!=0) && ll>0 && http_expect) { // eat answer as responce
    //prn("expect %d bytes, here %d\n",http_expect,ll);
    if (ll>sizeof(http_buf)) ll=sizeof(http_buf);
@@ -25,6 +36,8 @@ if ((strncmp(line,"+HTTPREAD",9)!=0) && ll>0 && http_expect) { // eat answer as 
    }
 if (strcmp(line,"OK")==0) ok++;
 else if (strcmp(line,"ERROR")==0) err++;
+else if (strcmp(line,"NO CARRIER")==0) {err++; clip[0]=0; dtmf[0]=0;} // done call
+else if (strcmp(line,"BUSY")==0) {err++; clip[0]=0; dtmf[0]=0;} // done call
 else if (strncmp(line,"+CSQ:",5)==0) _csq=atoi(line+5); // signal quality
 else if (strncmp(line,"+SAPBR: 1,1,\"",13)==0)  { // ip reporting
       //Serial.println("SAPBR_LINE HERE");
@@ -120,11 +133,12 @@ byte sim800l::ip_attach(char *apn=MODEM_DEF_APN) {
   return ip();
 }
 
+byte sim800l::http_done() { return at("+HTTPTERM");}
+
 byte sim800l::http_connect(char *url,int ta=HTTP_DEF_TIMEOUT) {
 int i;
 at("e1");
-  //at("+HTTPINIT?");
-  at("+HTTPTERM"); // if any opened
+  http_done();
   at("+HTTPINIT"); // sometimes failed, but action than successed
    // if (!atf("+HTTPPARA=\"URL\",\"%s\"",url)) return 0;
    s->print("AT+HTTPPARA=\"URL\",\"");
@@ -166,9 +180,9 @@ for(b=0,l=0;(len>0)&&(L>0);b+=l,L-=l,len-=l,buf+=l,r+=l) {
 return len; // ok
 }
 
-char out[300];
 
-byte sim800l::wget(char *url) {
+
+byte sim800l::wget(char *url,char *out=0,int size=0) {
 if (csq()==0) return 0; // no GSM coverage
 if (!ip()) { // try connect....
    //Serial.println("no ip, try connect");
@@ -178,11 +192,10 @@ if (!ip()) { // try connect....
 //Serial.println("OK, now begin http...");
 if (!http_connect(url)) return 0;
 //prn("OK, http_connected -> read %d bytes\n",http_len);
-int r = http_read(out,sizeof(out));
-if (r>0) {
-//  Serial.println(out);
-} //else prn("Fail read len=%d\n",r);
-
-return 1;
+if (!out) {  http_done();   return 1; } // done ok
+int r = http_read(out,size);
+http_done();
+if (r>0) return 1; // done
+return 0;
 }
 
